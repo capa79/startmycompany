@@ -8,6 +8,9 @@ import { getCase } from "@/lib/cases";
 import { CHECKED } from "@/lib/countries";
 import { dateFmt, getLang, tr, type Lang } from "@/lib/i18n";
 import { recommend, type Note, type Result } from "@/lib/recommend";
+import { costT2, rateNote } from "@/lib/money-view";
+import { getCurrency } from "@/lib/prefs";
+import { getRates } from "@/lib/rates";
 import { requireUser } from "@/lib/session";
 
 const ICON: Record<Note["kind"], string> = { plus: "+", minus: "!", block: "×", info: "i" };
@@ -28,7 +31,7 @@ function Notes({ notes, lang }: { notes: Note[]; lang: Lang }) {
   );
 }
 
-function CountryCard({ r, lang, caseId, top, chosen }: { r: Result; lang: Lang; caseId: number; top: boolean; chosen: boolean }) {
+function CountryCard({ r, lang, caseId, top, chosen, cost }: { r: Result; lang: Lang; caseId: number; top: boolean; chosen: boolean; cost: string }) {
   const c = r.country;
   return (
     <article className={`card stack${top ? " pick" : ""}`} style={{ gap: 14 }}>
@@ -44,7 +47,7 @@ function CountryCard({ r, lang, caseId, top, chosen }: { r: Result; lang: Lang; 
         </span>
       </div>
       <dl className="facts">
-        <div><dt>{tr(lang, { nb: "Startkostnad", en: "Start-up cost" })}</dt><dd>{tr(lang, c.startCostText)}</dd></div>
+        <div><dt>{tr(lang, { nb: "Startkostnad", en: "Start-up cost" })}</dt><dd>{cost}</dd></div>
         <div><dt>{tr(lang, { nb: "Selskapsskatt", en: "Corporate tax" })}</dt><dd>{tr(lang, c.corpTax)}</dd></div>
         <div><dt>{tr(lang, { nb: "Samlet skatt på utbytte", en: "Total dividend tax" })}</dt><dd>{tr(lang, c.divTotal)}</dd></div>
         <div><dt>{tr(lang, { nb: "Formuesskatt", en: "Wealth tax" })}</dt><dd>{c.wealthTax ? tr(lang, { nb: "Ja", en: "Yes" }) : tr(lang, { nb: "Nei", en: "No" })}</dd></div>
@@ -69,7 +72,9 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
   const c = await getCase(me.id, Number((await params).id));
   if (!c) notFound();
   const lang = await getLang();
-  const results = recommend(c.profile);
+  const [cur, rates] = await Promise.all([getCurrency(lang), getRates()]);
+  const cost = (x: Parameters<typeof costT2>[0]) => costT2(x, cur, rates);
+  const results = recommend(c.profile, cost);
   const top = results.slice(0, 3);
   const rest = results.slice(3);
   return (
@@ -79,7 +84,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
           <div className="stack" style={{ gap: 6 }}>
             <h1>{tr(lang, { nb: "Landene som passer best for deg", en: "The countries that fit you best" })}</h1>
             <p className="muted">
-              {tr(lang, { nb: "Tallene gjelder 2026 og ble sist kontrollert", en: "Figures apply to 2026 and were last checked" })} {dateFmt(lang, CHECKED)}.
+              {tr(lang, { nb: "Tallene gjelder 2026 og ble sist kontrollert", en: "Figures apply to 2026 and were last checked" })} {dateFmt(lang, CHECKED)}. {rateNote(lang, cur, rates)}
             </p>
           </div>
           <Link className="btn secondary" href={`/app/sak/${c.id}/rediger`}>
@@ -89,7 +94,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
         {aiEnabled() && (
           <Advice
             caseId={c.id}
-            initial={c.ai_advice_lang === lang ? c.ai_advice : null}
+            initial={c.ai_advice_lang === `${lang}:${cur}` ? c.ai_advice : null}
             labels={{
               title: tr(lang, { nb: "AI-rådgiverens vurdering", en: "The AI advisor's view" }),
               ask: tr(lang, { nb: "Forklar anbefalingen", en: "Explain the recommendation" }),
@@ -99,14 +104,14 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
         )}
         <div className="cards">
           {top.map((r, i) => (
-            <CountryCard key={r.country.code} r={r} lang={lang} caseId={c.id} top={i === 0 && !r.blocked} chosen={c.country === r.country.code} />
+            <CountryCard key={r.country.code} r={r} lang={lang} caseId={c.id} top={i === 0 && !r.blocked} chosen={c.country === r.country.code} cost={tr(lang, cost(r.country))} />
           ))}
         </div>
         <section className="stack">
           <h2>{tr(lang, { nb: "Andre land", en: "Other countries" })}</h2>
           <div className="cards">
             {rest.map((r) => (
-              <CountryCard key={r.country.code} r={r} lang={lang} caseId={c.id} top={false} chosen={c.country === r.country.code} />
+              <CountryCard key={r.country.code} r={r} lang={lang} caseId={c.id} top={false} chosen={c.country === r.country.code} cost={tr(lang, cost(r.country))} />
             ))}
           </div>
         </section>

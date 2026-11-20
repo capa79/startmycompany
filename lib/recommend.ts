@@ -10,7 +10,7 @@ export type Result = { country: Country; score: number; notes: Note[]; blocked: 
 const EEA_RES = new Set(["NO", "SE", "DK", "EEA"]);
 const nok = (n: number) => ({ nb: `${new Intl.NumberFormat("nb-NO").format(n)} kr`, en: `NOK ${new Intl.NumberFormat("en-GB").format(n)}` });
 
-function scoreCountry(c: Country, p: Profile): Result {
+function scoreCountry(c: Country, p: Profile, cost: (c: Country) => T2): Result {
   const notes: Note[] = [];
   let s = 50;
   const has = (arr: string[], v: string) => arr.includes(v);
@@ -62,7 +62,7 @@ function scoreCountry(c: Country, p: Profile): Result {
     }
   } else if (c.startCostNok !== null && maxCap < c.startCostNok) {
     s -= 20;
-    notes.push({ kind: "minus", text: { nb: `Startkostnaden er ${c.startCostText.nb}, mer enn kapitalen du har oppgitt.`, en: `The start-up cost is ${c.startCostText.en}, more than the capital you stated.` } });
+    notes.push({ kind: "minus", text: { nb: `Startkostnaden er ${cost(c).nb}, mer enn kapitalen du har oppgitt.`, en: `The start-up cost is ${cost(c).en}, more than the capital you stated.` } });
   }
   if (c.code === "CH" && maxCap < 238000) s -= 10;
 
@@ -117,8 +117,9 @@ function scoreCountry(c: Country, p: Profile): Result {
   return { country: c, score: Math.max(0, Math.min(100, s)), notes, blocked };
 }
 
-export function recommend(p: Profile): Result[] {
-  return COUNTRIES.map((c) => scoreCountry(c, p)).sort((a, b) => Number(a.blocked) - Number(b.blocked) || b.score - a.score);
+// cost: hvordan startkostnaden skal vises (i brukerens valuta)
+export function recommend(p: Profile, cost: (c: Country) => T2): Result[] {
+  return COUNTRIES.map((c) => scoreCountry(c, p, cost)).sort((a, b) => Number(a.blocked) - Number(b.blocked) || b.score - a.score);
 }
 
 export { nok };

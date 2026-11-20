@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "./db";
+import { isCur } from "./currency";
 
 export const SESSION_COOKIE = "smc_session";
 export const SESSION_DAYS = 30;
@@ -25,8 +26,13 @@ export async function createSession(userId: number) {
     `INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, now() + ($3 || ' days')::interval)`,
     [hashToken(token), userId, String(SESSION_DAYS)]
   );
-  await p.query("UPDATE users SET last_login_at = now() WHERE id = $1", [userId]);
-  (await cookies()).set(SESSION_COOKIE, token, {
+  const { rows } = await p.query("UPDATE users SET last_login_at = now() WHERE id = $1 RETURNING lang, currency", [userId]);
+  const jar = await cookies();
+  // Brukerens valg av språk og valuta følger kontoen til nye enheter
+  const prefOpts = { path: "/", maxAge: 365 * 24 * 3600, sameSite: "lax" as const };
+  if (rows[0]?.lang === "nb" || rows[0]?.lang === "en") jar.set("smc_lang", rows[0].lang, prefOpts);
+  if (isCur(rows[0]?.currency)) jar.set("smc_cur", rows[0].currency, prefOpts);
+  jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

@@ -81,6 +81,22 @@ export const CAPITAL: Opt[] = [
 
 export const CAPITAL_MAX: Record<string, number> = { lt5k: 5000, lt30k: 30000, lt300k: 300000, lt2m: 2000000, gt2m: Infinity };
 
+// Kapitalvalgene er definert i NOK. Her vises grensene i brukerens valuta, avrundet til pene tall.
+const EDGES: Record<string, [number, number]> = { lt5k: [0, 5000], lt30k: [5000, 30000], lt300k: [30000, 300000], lt2m: [300000, 2000000], gt2m: [2000000, Infinity] };
+function nice(n: number) {
+  const p = 10 ** Math.max(0, Math.floor(Math.log10(n)) - 1);
+  return Math.round(n / p) * p;
+}
+export function capitalLabel(id: string, lang: "nb" | "en", cur: string, nokPerUnit: number): string {
+  const e = EDGES[id];
+  if (!e) return id;
+  if (cur === "NOK") return CAPITAL.find((c) => c.id === id)!.label[lang];
+  const f = (n: number) => new Intl.NumberFormat(lang === "nb" ? "nb-NO" : "en-GB", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(nice(n / nokPerUnit));
+  if (e[0] === 0) return `${lang === "nb" ? "Under" : "Under"} ${f(e[1])}`;
+  if (e[1] === Infinity) return `${lang === "nb" ? "Over" : "Over"} ${f(e[0])}`;
+  return `${f(e[0])}–${f(e[1])}`;
+}
+
 export type Profile = {
   business: string;
   description: string;

@@ -2,9 +2,13 @@ import Link from "next/link";
 import { Footer, Header } from "./chrome";
 import { COUNTRIES, CHECKED } from "@/lib/countries";
 import { dateFmt, getLang, tr } from "@/lib/i18n";
+import { costText, rateNote } from "@/lib/money-view";
+import { getCurrency } from "@/lib/prefs";
+import { getRates } from "@/lib/rates";
 
 export default async function Home() {
   const lang = await getLang();
+  const [cur, rates] = await Promise.all([getCurrency(lang), getRates()]);
   const steps = [
     { t: { nb: "Svar på noen spørsmål", en: "Answer a few questions" }, d: { nb: "Hva selskapet skal drive med, hvor du bor, og hva som er viktig for deg om skatt, regnskap, bank og visum.", en: "What the company will do, where you live, and what matters to you about tax, accounting, banking and visas." } },
     { t: { nb: "Se hvilke land som passer", en: "See which countries fit" }, d: { nb: "Ni land sammenlignet på startkostnad, skatt, lokale krav og tid. AI-rådgiveren forklarer anbefalingen.", en: "Nine countries compared on start-up cost, tax, local requirements and time. The AI advisor explains the recommendation." } },
@@ -66,7 +70,7 @@ export default async function Home() {
                     <tr key={c.code}>
                       <td>{tr(lang, c.name)}</td>
                       <td>{c.form}</td>
-                      <td>{tr(lang, c.startCostText)}</td>
+                      <td>{costText(lang, c, cur, rates)}</td>
                       <td>{tr(lang, c.corpTax)}</td>
                       <td>{tr(lang, c.divTotal)}</td>
                     </tr>
@@ -75,7 +79,8 @@ export default async function Home() {
               </table>
             </div>
             <p className="tiny muted">
-              {tr(lang, { nb: "Startkostnad = minstekapital + statlig gebyr, omregnet til kroner. Sist kontrollert", en: "Start-up cost = minimum capital + state fee, converted to NOK. Last checked" })} {dateFmt(lang, CHECKED)}.{" "}
+              {tr(lang, { nb: "Startkostnad = minstekapital + statlig gebyr.", en: "Start-up cost = minimum capital + state fee." })} {rateNote(lang, cur, rates)}{" "}
+              {tr(lang, { nb: "Fakta sist kontrollert", en: "Facts last checked" })} {dateFmt(lang, CHECKED)}.{" "}
               {tr(lang, { nb: "Ikke juridisk eller skattemessig rådgivning.", en: "Not legal or tax advice." })}
             </p>
           </div>

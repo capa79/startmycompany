@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { audit, db } from "@/lib/db";
 import { getLang, isLang, LANG_COOKIE } from "@/lib/i18n";
+import { isCur } from "@/lib/currency";
+import { CUR_COOKIE } from "@/lib/prefs";
 import { hashPassword, passwordProblem, verifyPassword } from "@/lib/password";
 import { clearFails, noteFail, tooManyFails } from "@/lib/rate-limit";
 import { clientIp, createSession, destroySession, getCurrentUser, requireUser, safeNext } from "@/lib/session";
@@ -84,6 +86,15 @@ export async function setLangAction(form: FormData) {
   (await cookies()).set(LANG_COOKIE, lang, { path: "/", maxAge: 365 * 24 * 3600, sameSite: "lax" });
   const me = await getCurrentUser().catch(() => null);
   if (me) await (await db()).query("UPDATE users SET lang = $2 WHERE id = $1", [me.id, lang]);
+  revalidatePath("/", "layout");
+}
+
+export async function setCurrencyAction(form: FormData) {
+  const cur = String(form.get("currency") ?? "");
+  if (!isCur(cur)) return;
+  (await cookies()).set(CUR_COOKIE, cur, { path: "/", maxAge: 365 * 24 * 3600, sameSite: "lax" });
+  const me = await getCurrentUser().catch(() => null);
+  if (me) await (await db()).query("UPDATE users SET currency = $2 WHERE id = $1", [me.id, cur]);
   revalidatePath("/", "layout");
 }
 

@@ -48,6 +48,8 @@ p { margin: 0; }
 .nav a, .nav button.link { padding: 8px 12px; border-radius: 8px; text-decoration: none; color: var(--ink); font-size: 15px; background: none; border: 0; font: inherit; cursor: pointer; }
 .nav a:hover, .nav button.link:hover { background: var(--surface); }
 
+.pref select { min-height: 40px; width: auto; padding: 6px 30px 6px 10px; font-size: 14px; border-radius: 8px; }
+
 /* Knapper og skjema */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 15px; text-decoration: none; cursor: pointer; }
 .btn:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }

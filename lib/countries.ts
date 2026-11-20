@@ -2,6 +2,7 @@
 // Alle tall er kontrollert mot kildene som står under hvert land (se `sources`).
 // Gebyrer og satser endres jevnlig – kontroller dem minst én gang i året og oppdater CHECKED.
 import type { T2 } from "./i18n";
+import type { Cur } from "./currency";
 
 export const CHECKED = "2026-11-20";
 
@@ -15,8 +16,9 @@ export type Country = {
   formLong: T2;
   minCapital: T2;
   stateFee: T2;
-  startCostNok: number | null; // kapital + statlig gebyr, omregnet til NOK (null = varierer)
-  startCostText: T2;
+  startCostNok: number | null; // samme beløp i NOK, brukes til poengsetting (null = varierer)
+  // Kapital + statlig gebyr i landets egen valuta (null = varierer). from = «fra»-beløp. max = øvre grense.
+  startCost: { amount: number; max?: number; cur: Cur; from?: boolean } | null;
   corpTax: T2;
   retainedTax: number; // skatt på overskudd som blir stående i selskapet (for sammenligning)
   divTotal: T2;
@@ -47,7 +49,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "30 000 kr", en: "NOK 30,000" },
     stateFee: { nb: "6 825 kr digitalt, 7 912 kr på papir", en: "NOK 6,825 online, NOK 7,912 on paper" },
     startCostNok: 36825,
-    startCostText: { nb: "36 825 kr", en: "NOK 36,825" },
+    startCost: { amount: 36825, cur: "NOK" },
     corpTax: { nb: "22 %", en: "22%" },
     retainedTax: 22,
     divTotal: { nb: "51,5 %", en: "51.5%" },
@@ -96,7 +98,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "25 000 SEK", en: "SEK 25,000" },
     stateFee: { nb: "2 400 SEK digitalt, 2 700 SEK på papir", en: "SEK 2,400 online, SEK 2,700 on paper" },
     startCostNok: 26200,
-    startCostText: { nb: "ca. 26 200 kr", en: "approx. NOK 26,200" },
+    startCost: { amount: 27400, cur: "SEK" },
     corpTax: { nb: "20,6 %", en: "20.6%" },
     retainedTax: 20.6,
     divTotal: { nb: "36,5–44,4 %", en: "36.5–44.4%" },
@@ -140,7 +142,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "20 000 DKK", en: "DKK 20,000" },
     stateFee: { nb: "670 DKK (må bekreftes)", en: "DKK 670 (to be confirmed)" },
     startCostNok: 28900,
-    startCostText: { nb: "ca. 28 900 kr", en: "approx. NOK 28,900" },
+    startCost: { amount: 20670, cur: "DKK" },
     corpTax: { nb: "22 %", en: "22%" },
     retainedTax: 22,
     divTotal: { nb: "43,1–54,8 %", en: "43.1–54.8%" },
@@ -181,7 +183,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "0,01 euro per aksjonær", en: "EUR 0.01 per shareholder" },
     stateFee: { nb: "265 euro (+150 euro for e-Residency)", en: "EUR 265 (+EUR 150 for e-Residency)" },
     startCostNok: 4300,
-    startCostText: { nb: "ca. 4 300 kr", en: "approx. NOK 4,300" },
+    startCost: { amount: 415, cur: "EUR" },
     corpTax: { nb: "0 % på tilbakeholdt overskudd, 22 % ved utdeling", en: "0% on retained profit, 22% when distributed" },
     retainedTax: 0,
     divTotal: { nb: "22 %", en: "22%" },
@@ -221,7 +223,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "5 000 PLN", en: "PLN 5,000" },
     stateFee: { nb: "250 PLN via S24, 500 PLN med notar", en: "PLN 250 via S24, PLN 500 with a notary" },
     startCostNok: 12500,
-    startCostText: { nb: "ca. 12 500 kr", en: "approx. NOK 12,500" },
+    startCost: { amount: 5250, cur: "PLN" },
     corpTax: { nb: "19 % (9 % for små selskaper)", en: "19% (9% for small companies)" },
     retainedTax: 19,
     divTotal: { nb: "34,4 %", en: "34.4%" },
@@ -262,7 +264,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "20 000 CHF", en: "CHF 20,000" },
     stateFee: { nb: "Notar og handelsregister, ca. 1 000–3 500 CHF", en: "Notary and commercial register, approx. CHF 1,000–3,500" },
     startCostNok: 238000,
-    startCostText: { nb: "ca. 238 000–266 000 kr", en: "approx. NOK 238,000–266,000" },
+    startCost: { amount: 21000, max: 23500, cur: "CHF" },
     corpTax: { nb: "ca. 11,9–20,5 % etter kanton", en: "approx. 11.9–20.5% by canton" },
     retainedTax: 14.4,
     divTotal: { nb: "Avhenger av kanton", en: "Depends on canton" },
@@ -302,7 +304,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "Varierer per emirat og frisone", en: "Varies by emirate and free zone" },
     stateFee: { nb: "Varierer per sone", en: "Varies by zone" },
     startCostNok: null,
-    startCostText: { nb: "Varierer", en: "Varies" },
+    startCost: null,
     corpTax: { nb: "0 % opp til 375 000 AED, deretter 9 %", en: "0% up to AED 375,000, then 9%" },
     retainedTax: 9,
     divTotal: { nb: "9 %", en: "9%" },
@@ -339,7 +341,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "200 000 USD ved mer enn 40 % utenlandsk eierskap (hjemmemarked)", en: "USD 200,000 with over 40% foreign ownership (domestic market)" },
     stateFee: { nb: "ca. 0,2 % av kapitalen (minst 2 000 PHP)", en: "approx. 0.2% of capital (min. PHP 2,000)" },
     startCostNok: null,
-    startCostText: { nb: "Fra 200 000 USD i kapital", en: "From USD 200,000 in capital" },
+    startCost: { amount: 200000, cur: "USD", from: true },
     corpTax: { nb: "25 % (20 % for små selskaper)", en: "25% (20% for small companies)" },
     retainedTax: 25,
     divTotal: { nb: "32,5 % (bosatt eier)", en: "32.5% (resident owner)" },
@@ -379,7 +381,7 @@ export const COUNTRIES: Country[] = [
     minCapital: { nb: "Ingen", en: "None" },
     stateFee: { nb: "100 pund digitalt, 124 pund på papir", en: "GBP 100 online, GBP 124 on paper" },
     startCostNok: 1250,
-    startCostText: { nb: "ca. 1 250 kr", en: "approx. NOK 1,250" },
+    startCost: { amount: 100, cur: "GBP" },
     corpTax: { nb: "19 % opp til 50 000 pund, 25 % over 250 000 pund", en: "19% up to GBP 50,000, 25% above GBP 250,000" },
     retainedTax: 19,
     divTotal: { nb: "27,7–51,8 %", en: "27.7–51.8%" },

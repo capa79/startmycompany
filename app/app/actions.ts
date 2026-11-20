@@ -11,6 +11,9 @@ import { cleanDocData } from "@/lib/no-docs";
 import { BUSINESS, cleanProfile, CUSTOMERS, label, NEEDS, PRIOS, RESIDENCE } from "@/lib/profile";
 import { recommend } from "@/lib/recommend";
 import { requireUser } from "@/lib/session";
+import { costT2 } from "@/lib/money-view";
+import { getCurrency } from "@/lib/prefs";
+import { getRates } from "@/lib/rates";
 
 export async function saveInterviewAction(caseId: number | null, rawProfile: unknown) {
   const me = await requireUser();
@@ -69,14 +72,16 @@ export async function explainAction(caseId: number): Promise<{ text: string } | 
   const lang = await getLang();
   const c = await getCase(me.id, caseId);
   if (!c) return { error: "Ikke funnet." };
-  if (c.ai_advice && c.ai_advice_lang === lang) return { text: c.ai_advice };
+  const key = `${lang}:${await getCurrency(lang)}`;
+  if (c.ai_advice && c.ai_advice_lang === key) return { text: c.ai_advice };
   if (!aiEnabled()) return { error: tr(lang, { nb: "AI-rådgiveren er ikke slått på ennå.", en: "The AI advisor is not enabled yet." }) };
-  const res = recommend(c.profile).slice(0, 4);
+  const [cur, rates] = await Promise.all([getCurrency(lang), getRates()]);
+  const res = recommend(c.profile, (x) => costT2(x, cur, rates)).slice(0, 4);
   const p = c.profile;
   const facts = res
     .map(
       (r) =>
-        `${r.country.name.nb} (${r.country.form}), poeng ${r.score}${r.blocked ? " – BLOKKERT" : ""}: startkostnad ${r.country.startCostText.nb}; selskapsskatt ${r.country.corpTax.nb}; samlet utbytteskatt ${r.country.divTotal.nb}; formuesskatt ${r.country.wealthTax ? "ja" : "nei"}; lokale krav: ${r.country.localReq.nb}; bank: ${r.country.bank.nb}; visum: ${r.country.visa.nb}. Merknader: ${r.notes.map((n) => n.text.nb).join(" ")}`
+        `${r.country.name.nb} (${r.country.form}), poeng ${r.score}${r.blocked ? " – BLOKKERT" : ""}: startkostnad ${costT2(r.country, cur, rates).nb}; selskapsskatt ${r.country.corpTax.nb}; samlet utbytteskatt ${r.country.divTotal.nb}; formuesskatt ${r.country.wealthTax ? "ja" : "nei"}; lokale krav: ${r.country.localReq.nb}; bank: ${r.country.bank.nb}; visum: ${r.country.visa.nb}. Merknader: ${r.notes.map((n) => n.text.nb).join(" ")}`
     )
     .join("\n");
   const profileText = [
@@ -97,7 +102,7 @@ export async function explainAction(caseId: number): Promise<{ text: string } | 
         (lang === "nb" ? "norsk bokmål." : "English."),
       prompt: `Brukerens profil (data):\n${profileText}\n\nFakta per land (kontrollert ${CHECKED}):\n${facts}`,
     });
-    await updateCase(me.id, caseId, { ai_advice: text, ai_advice_lang: lang });
+    await updateCase(me.id, caseId, { ai_advice: text, ai_advice_lang: key });
     return { text };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };

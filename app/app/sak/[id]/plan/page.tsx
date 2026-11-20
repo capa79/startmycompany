@@ -6,6 +6,9 @@ import { getCase } from "@/lib/cases";
 import { CHECKED, countryByCode } from "@/lib/countries";
 import { dateFmt, getLang, tr } from "@/lib/i18n";
 import { requireUser } from "@/lib/session";
+import { costText, rateNote } from "@/lib/money-view";
+import { getCurrency } from "@/lib/prefs";
+import { getRates } from "@/lib/rates";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
@@ -14,6 +17,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const country = countryByCode(c.country);
   if (!country) redirect(`/app/sak/${c.id}`);
   const lang = await getLang();
+  const [cur, rates] = await Promise.all([getCurrency(lang), getRates()]);
   const isNO = country.code === "NO";
   return (
     <Shell>
@@ -49,6 +53,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           <section className="card stack">
             <h2>{tr(lang, { nb: "Krav og praktiske forhold", en: "Requirements and practicalities" })}</h2>
             <dl className="facts">
+              <div><dt>{tr(lang, { nb: "Startkostnad", en: "Start-up cost" })}</dt><dd>{costText(lang, country, cur, rates)}</dd></div>
               <div><dt>{tr(lang, { nb: "Minstekapital", en: "Minimum capital" })}</dt><dd>{tr(lang, country.minCapital)}</dd></div>
               <div><dt>{tr(lang, { nb: "Statlig gebyr", en: "State fee" })}</dt><dd>{tr(lang, country.stateFee)}</dd></div>
               <div><dt>{tr(lang, { nb: "Lokale krav", en: "Local requirements" })}</dt><dd>{tr(lang, country.localReq)}</dd></div>
@@ -58,6 +63,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               <div><dt>{tr(lang, { nb: "Arbeidsgiveravgift", en: "Employer contributions" })}</dt><dd>{tr(lang, country.employerTax)}</dd></div>
               <div><dt>{tr(lang, { nb: "Moms", en: "VAT" })}</dt><dd>{tr(lang, country.vat)}</dd></div>
             </dl>
+            <p className="tiny muted">{rateNote(lang, cur, rates)}</p>
           </section>
           <section className="stack">
             <h2>{tr(lang, { nb: "Andre selskapsformer", en: "Other company forms" })}</h2>

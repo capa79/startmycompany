@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { Lang, T2 } from "@/lib/i18n";
-import { BUSINESS, CAPITAL, CUSTOMERS, EID, NEEDS, OWNERS, PRIOS, RESIDENCE, type Opt, type Profile } from "@/lib/profile";
+import { BUSINESS, CAPITAL, capitalLabel, CUSTOMERS, EID, NEEDS, OWNERS, PRIOS, RESIDENCE, type Opt, type Profile } from "@/lib/profile";
 import { interpretAction, saveInterviewAction } from "./actions";
 
 const t = (lang: Lang, x: T2) => x[lang];
@@ -42,7 +42,9 @@ function Ask({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Interview({ lang, aiOn, caseId, initial }: { lang: Lang; aiOn: boolean; caseId: number | null; initial: Profile }) {
+export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { lang: Lang; aiOn: boolean; caseId: number | null; initial: Profile; cur: string; nokPerUnit: number }) {
+  // Kapitalvalgene vises i brukerens valuta
+  const capitalOpts: Opt[] = CAPITAL.map((c) => ({ id: c.id, label: { nb: capitalLabel(c.id, "nb", cur, nokPerUnit), en: capitalLabel(c.id, "en", cur, nokPerUnit) } }));
   const [p, setP] = useState<Profile>(initial);
   const [step, setStep] = useState(initial.business ? 6 : 0);
   const [aiBusy, setAiBusy] = useState(false);
@@ -155,7 +157,7 @@ export function Interview({ lang, aiOn, caseId, initial }: { lang: Lang; aiOn: b
         {step >= 5 && (
           <Ask>
             <p className="bubble">{L("Hvor mye kapital kan du sette inn i selskapet ved start?", "How much capital can you put into the company at the start?")}</p>
-            <Chips lang={lang} name={L("Kapital", "Capital")} opts={CAPITAL} value={p.capital} onChange={(v) => (set("capital", v as string), next(6))} />
+            <Chips lang={lang} name={L("Kapital", "Capital")} opts={capitalOpts} value={p.capital} onChange={(v) => (set("capital", v as string), next(6))} />
           </Ask>
         )}
       </section>
@@ -177,7 +179,7 @@ export function Interview({ lang, aiOn, caseId, initial }: { lang: Lang; aiOn: b
           <Fact k={L("Eiere", "Owners")} v={OWNERS.find((b) => b.id === p.owners)?.label} lang={lang} />
           <Fact k={L("Skatt og regnskap", "Tax and accounts")} list={p.prios.map((x) => PRIOS.find((o) => o.id === x)!.label)} lang={lang} />
           <Fact k={L("Behov i landet", "Local needs")} list={p.needs.map((x) => NEEDS.find((o) => o.id === x)!.label)} lang={lang} />
-          <Fact k={L("Kapital", "Capital")} v={CAPITAL.find((b) => b.id === p.capital)?.label} lang={lang} />
+          <Fact k={L("Kapital", "Capital")} v={capitalOpts.find((b) => b.id === p.capital)?.label} lang={lang} />
         </dl>
         {error && (
           <p className="alert error" role="alert">

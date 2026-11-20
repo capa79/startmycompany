@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { getLang, LANGS, tr } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/session";
-import { logoutAction, setLangAction } from "./auth-actions";
+import { logoutAction, setCurrencyAction, setLangAction } from "./auth-actions";
+import { PrefSelect } from "./components/prefs";
+import { CURRENCIES } from "@/lib/currency";
+import { getCurrency } from "@/lib/prefs";
 
 export function Logo() {
   return (
@@ -18,6 +21,7 @@ export function Logo() {
 export async function Header() {
   const lang = await getLang();
   const me = await getCurrentUser().catch(() => null);
+  const cur = await getCurrency(lang);
   return (
     <header className="top">
       <div className="wrap">
@@ -44,13 +48,20 @@ export async function Header() {
               </Link>
             </>
           )}
-          <form action={setLangAction} className="row" style={{ gap: 4 }}>
-            {LANGS.filter((l) => l.code !== lang).map((l) => (
-              <button key={l.code} className="link" type="submit" name="lang" value={l.code} lang={l.code}>
-                {l.label}
-              </button>
-            ))}
-          </form>
+          <PrefSelect
+            action={setLangAction}
+            name="lang"
+            label={tr(lang, { nb: "Språk", en: "Language" })}
+            value={lang}
+            options={LANGS.map((l) => ({ value: l.code, label: l.label }))}
+          />
+          <PrefSelect
+            action={setCurrencyAction}
+            name="currency"
+            label={tr(lang, { nb: "Valuta", en: "Currency" })}
+            value={cur}
+            options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} – ${tr(lang, c.name)}` }))}
+          />
         </nav>
       </div>
     </header>

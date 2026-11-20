@@ -12,7 +12,14 @@ Next.js 16 + Postgres, bygget på samme oppsett som Nextly.
 - `/app/sak/[id]/dokumenter` – stiftelsesdokument, vedtekter og aksjeeierbok for norsk AS (utskrift / PDF)
 - `/app/konto` – navn, passord og sletting av konto
 - `/admin` – brukere, saker, valgte land, AI-bruk og logg (bare administratorer)
-- Norsk og engelsk (språkvalg i toppmenyen)
+- Språk (norsk/engelsk) og valuta (NOK, SEK, DKK, EUR, GBP, CHF, PLN, USD, AED, PHP) velges hver for seg i toppmenyen,
+  huskes i nettleseren og på kontoen
+
+## Valuta
+Beløp lagres i landets egen valuta (`startCost` i `lib/countries.ts`) og omregnes til brukerens valuta med
+Norges Banks middelkurser (`lib/rates.ts`, hentes på nytt hver 6. time). Svarer ikke Norges Bank, brukes
+reservekursene i `lib/currency.ts`, og siden sier fra om det. Beløp i samme valuta som landet vises eksakt,
+omregnede beløp rundes av og merkes «ca.». Dokumentene for norsk AS er alltid i NOK.
 
 ## Miljøvariabler (Render → Environment)
 | Navn | Beskrivelse |
