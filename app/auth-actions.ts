@@ -60,17 +60,28 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
   if (form.get("terms") !== "on") return { error: await L("Du må godta vilkårene.", "You must accept the terms.") };
   const ip = await clientIp();
   if (tooManyFails(`ip:${ip}`)) return { error: await L("For mange forsøk. Prøv igjen senere.", "Too many attempts. Try again later.") };
-  const p = await db();
-  const hash = await hashPassword(pw);
-  const { rows } = await p.query(
-    "INSERT INTO users (email, password_hash, first_name, last_name, lang) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING RETURNING id",
-    [email, hash, first, last, await getLang()]
-  );
+  let rows: { id: number }[];
+  try {
+    const p = await db();
+    const hash = await hashPassword(pw);
+    ({ rows } = await p.query(
+      "INSERT INTO users (email, password_hash, first_name, last_name, lang) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING RETURNING id",
+      [email, hash, first, last, await getLang()]
+    ));
+  } catch (e) {
+    console.error("Registrering: databasefeil", e);
+    return { error: await L("Får ikke kontakt med databasen akkurat nå. Prøv igjen om litt.", "Cannot reach the database right now. Try again shortly.") };
+  }
   if (!rows[0]) {
     noteFail(`ip:${ip}`);
     return { error: await L("Det finnes allerede en konto med denne e-posten. Logg inn i stedet.", "An account with this email already exists. Log in instead.") };
   }
-  await createSession(Number(rows[0].id));
+  try {
+    await createSession(Number(rows[0].id));
+  } catch (e) {
+    console.error("Registrering: kunne ikke opprette sesjon", e);
+    return { error: await L("Kontoen er opprettet, men innloggingen feilet. Prøv å logge inn.", "The account was created, but sign-in failed. Try logging in.") };
+  }
   await audit(email, "registrerte seg");
   redirect("/app/ny");
 }
