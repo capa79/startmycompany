@@ -8,7 +8,7 @@ import { createCase, deleteCase, getCase, updateCase } from "@/lib/cases";
 import { countryByCode, CHECKED } from "@/lib/countries";
 import { getLang, tr } from "@/lib/i18n";
 import { cleanDocData } from "@/lib/no-docs";
-import { BUSINESS, cleanProfile, CUSTOMERS, label, NEEDS, PRIOS, RESIDENCE } from "@/lib/profile";
+import { BUSINESS, cleanProfile, CUSTOMERS, label, labels, NEEDS, OWNERS, PRIOS, RESIDENCE } from "@/lib/profile";
 import { recommend } from "@/lib/recommend";
 import { requireUser } from "@/lib/session";
 import { costT2 } from "@/lib/money-view";
@@ -19,8 +19,8 @@ export async function saveInterviewAction(caseId: number | null, rawProfile: unk
   const me = await requireUser();
   const lang = await getLang();
   const profile = cleanProfile(rawProfile);
-  if (!profile.business || !profile.residence) throw new Error(tr(lang, { nb: "Svar på hva selskapet skal drive med og hvor du bor.", en: "Answer what the company will do and where you live." }));
-  const title = tr(lang, label(BUSINESS, profile.business) ?? { nb: "Nytt selskap", en: "New company" });
+  if (!profile.business.length || !profile.residence.length) throw new Error(tr(lang, { nb: "Svar på hva selskapet skal drive med og hvor du bor.", en: "Answer what the company will do and where you live." }));
+  const title = labels(BUSINESS, profile.business, lang) || tr(lang, { nb: "Nytt selskap", en: "New company" });
   let id = caseId;
   if (id && (await getCase(me.id, id))) {
     await updateCase(me.id, id, { profile, status: "compared" });
@@ -85,8 +85,9 @@ export async function explainAction(caseId: number): Promise<{ text: string } | 
     )
     .join("\n");
   const profileText = [
-    `Virksomhet: ${tr("nb", label(BUSINESS, p.business) ?? "")}${p.description ? ` (${p.description})` : ""}`,
-    `Bosted: ${tr("nb", label(RESIDENCE, p.residence) ?? "")}`,
+    `Virksomhet: ${labels(BUSINESS, p.business, "nb")}${p.description ? ` (${p.description})` : ""}`,
+    `Bosted for stifterne: ${labels(RESIDENCE, p.residence, "nb")}`,
+    `Eiere: ${labels(OWNERS, p.owners, "nb")}`,
     `Kunder: ${p.customers.map((x) => tr("nb", label(CUSTOMERS, x) ?? "")).join(", ")}`,
     `Viktig: ${p.prios.map((x) => tr("nb", label(PRIOS, x) ?? "")).join(", ")}`,
     `Behov i landet: ${p.needs.map((x) => tr("nb", label(NEEDS, x) ?? "")).join(", ")}`,

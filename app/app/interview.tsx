@@ -7,15 +7,17 @@ import { interpretAction, saveInterviewAction } from "./actions";
 
 const t = (lang: Lang, x: T2) => x[lang];
 
+// Valg som utelukker de andre i samme spørsmål
+const EXCLUSIVE = new Set(["ingen", "none", "alone"]);
+
 function Chips({ opts, value, multi, onChange, lang, name }: { opts: Opt[]; value: string | string[]; multi?: boolean; onChange: (v: string | string[]) => void; lang: Lang; name: string }) {
   const on = (id: string) => (multi ? (value as string[]).includes(id) : value === id);
   const toggle = (id: string) => {
     if (!multi) return onChange(id);
     const cur = value as string[];
-    // «Ingenting lokalt» / «Ingen av disse» utelukker de andre valgene
-    const exclusive = id === "ingen" || id === "none";
-    if (exclusive) return onChange(cur.includes(id) ? [] : [id]);
-    const base = cur.filter((x) => x !== "ingen" && x !== "none");
+    // «Ingenting lokalt», «Ingen av disse» og «Bare meg» utelukker de andre valgene
+    if (EXCLUSIVE.has(id)) return onChange(cur.includes(id) ? [] : [id]);
+    const base = cur.filter((x) => !EXCLUSIVE.has(x));
     onChange(base.includes(id) ? base.filter((x) => x !== id) : [...base, id]);
   };
   return (
@@ -46,14 +48,14 @@ export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { la
   // Kapitalvalgene vises i brukerens valuta
   const capitalOpts: Opt[] = CAPITAL.map((c) => ({ id: c.id, label: { nb: capitalLabel(c.id, "nb", cur, nokPerUnit), en: capitalLabel(c.id, "en", cur, nokPerUnit) } }));
   const [p, setP] = useState<Profile>(initial);
-  const [step, setStep] = useState(initial.business ? 6 : 0);
+  const [step, setStep] = useState(initial.business.length ? 6 : 0);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => setP((x) => ({ ...x, [k]: v }));
   const L = (nb: string, en: string) => (lang === "nb" ? nb : en);
-  const hint = BUSINESS.find((b) => b.id === p.business)?.hint;
+  const hints = BUSINESS.filter((b) => p.business.includes(b.id) && b.hint);
 
   const next = (n: number) => setStep((s) => Math.max(s, n));
 
@@ -63,7 +65,7 @@ export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { la
     const r = await interpretAction(p.description);
     setAiBusy(false);
     if ("error" in r) return setAiMsg(r.error);
-    setP((x) => ({ ...x, business: r.business, description: r.purpose }));
+    setP((x) => ({ ...x, business: x.business.includes(r.business) ? x.business : [...x.business, r.business], description: r.purpose }));
     next(1);
   }
 
@@ -80,15 +82,15 @@ export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { la
     });
   }
 
-  const answered = [p.business, p.residence, p.owners, p.prios.length ? "x" : "", p.needs.length ? "x" : "", p.capital].filter(Boolean).length;
-  const ready = Boolean(p.business && p.residence);
+  const answered = [p.business.length ? "x" : "", p.residence.length ? "x" : "", p.owners.length ? "x" : "", p.prios.length ? "x" : "", p.needs.length ? "x" : "", p.capital].filter(Boolean).length;
+  const ready = p.business.length > 0 && p.residence.length > 0;
 
   return (
     <div className="layout-2">
       <section className="main stack" aria-label={L("Intervju", "Interview")} style={{ gap: 22 }}>
         <Ask>
-          <p className="bubble">{L("Hva skal selskapet drive med? Velg det som passer best, eller beskriv det med egne ord.", "What will the company do? Pick the best fit, or describe it in your own words.")}</p>
-          <Chips lang={lang} name={L("Type virksomhet", "Type of business")} opts={BUSINESS} value={p.business} onChange={(v) => (set("business", v as string), next(1))} />
+          <p className="bubble">{L("Hva skal selskapet drive med? Velg alt som passer, eller beskriv det med egne ord.", "What will the company do? Pick everything that fits, or describe it in your own words.")}</p>
+          <Chips lang={lang} name={L("Type virksomhet", "Type of business")} multi opts={BUSINESS} value={p.business} onChange={(v) => (set("business", v as string[]), next(1))} />
           <label className="field">
             <span className="sr-only">{L("Beskriv virksomheten", "Describe the business")}</span>
             <textarea value={p.description} onChange={(e) => set("description", e.target.value)} placeholder={L("F.eks. «Konsulenttjenester innen logistikk for kunder i Norden»", "E.g. «Logistics consulting for clients in the Nordics»")} />
@@ -101,16 +103,20 @@ export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { la
               {aiMsg && <span className="small" role="status">{aiMsg}</span>}
             </div>
           )}
-          {hint && <p className="bubble small">{t(lang, hint)}</p>}
+          {hints.map((h) => (
+            <p key={h.id} className="bubble small">
+              <strong>{t(lang, h.label)}:</strong> {t(lang, h.hint!)}
+            </p>
+          ))}
         </Ask>
 
         {step >= 1 && (
           <Ask>
-            <p className="bubble">{L("Hvor bor du, og hvilken elektronisk ID har du? Det avgjør om du kan stifte digitalt.", "Where do you live, and which electronic ID do you have? That decides whether you can form the company online.")}</p>
-            <Chips lang={lang} name={L("Bosted", "Residence")} opts={RESIDENCE} value={p.residence} onChange={(v) => set("residence", v as string)} />
+            <p className="bubble">{L("Hvor bor du og eventuelle medstiftere, og hvilken elektronisk ID har dere? Det avgjør om dere kan stifte digitalt. Velg gjerne flere.", "Where do you and any co-founders live, and which electronic ID do you have? That decides whether you can form the company online. Pick several if needed.")}</p>
+            <Chips lang={lang} name={L("Bosted", "Residence")} multi opts={RESIDENCE} value={p.residence} onChange={(v) => set("residence", v as string[])} />
             <Chips lang={lang} name={L("Elektronisk ID", "Electronic ID")} multi opts={EID} value={p.eids} onChange={(v) => set("eids", v as string[])} />
             {step === 1 && (
-              <button type="button" className="btn secondary" style={{ alignSelf: "flex-start" }} disabled={!p.residence} onClick={() => next(2)}>
+              <button type="button" className="btn secondary" style={{ alignSelf: "flex-start" }} disabled={!p.residence.length} onClick={() => next(2)}>
                 {L("Neste", "Next")}
               </button>
             )}
@@ -119,8 +125,8 @@ export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { la
 
         {step >= 2 && (
           <Ask>
-            <p className="bubble">{L("Hvem skal eie selskapet, og hvor er kundene?", "Who will own the company, and where are the customers?")}</p>
-            <Chips lang={lang} name={L("Eiere", "Owners")} opts={OWNERS} value={p.owners} onChange={(v) => set("owners", v as string)} />
+            <p className="bubble">{L("Hvem skal eie selskapet, og hvor er kundene? Velg gjerne flere.", "Who will own the company, and where are the customers? Pick several if needed.")}</p>
+            <Chips lang={lang} name={L("Eiere", "Owners")} multi opts={OWNERS} value={p.owners} onChange={(v) => set("owners", v as string[])} />
             <Chips lang={lang} name={L("Kunder", "Customers")} multi opts={CUSTOMERS} value={p.customers} onChange={(v) => set("customers", v as string[])} />
             {step === 2 && (
               <button type="button" className="btn secondary" style={{ alignSelf: "flex-start" }} onClick={() => next(3)}>
@@ -173,10 +179,10 @@ export function Interview({ lang, aiOn, caseId, initial, cur, nokPerUnit }: { la
           <div style={{ width: `${Math.round((answered / 6) * 100)}%` }} />
         </div>
         <dl className="facts">
-          <Fact k={L("Virksomhet", "Business")} v={BUSINESS.find((b) => b.id === p.business)?.label} lang={lang} />
-          <Fact k={L("Bosted", "Residence")} v={RESIDENCE.find((b) => b.id === p.residence)?.label} lang={lang} />
+          <Fact k={L("Virksomhet", "Business")} list={p.business.map((x) => BUSINESS.find((o) => o.id === x)!.label)} lang={lang} />
+          <Fact k={L("Bosted", "Residence")} list={p.residence.map((x) => RESIDENCE.find((o) => o.id === x)!.label)} lang={lang} />
           <Fact k={L("E-ID", "E-ID")} list={p.eids.map((x) => EID.find((o) => o.id === x)!.label)} lang={lang} />
-          <Fact k={L("Eiere", "Owners")} v={OWNERS.find((b) => b.id === p.owners)?.label} lang={lang} />
+          <Fact k={L("Eiere", "Owners")} list={p.owners.map((x) => OWNERS.find((o) => o.id === x)!.label)} lang={lang} />
           <Fact k={L("Skatt og regnskap", "Tax and accounts")} list={p.prios.map((x) => PRIOS.find((o) => o.id === x)!.label)} lang={lang} />
           <Fact k={L("Behov i landet", "Local needs")} list={p.needs.map((x) => NEEDS.find((o) => o.id === x)!.label)} lang={lang} />
           <Fact k={L("Kapital", "Capital")} v={capitalOpts.find((b) => b.id === p.capital)?.label} lang={lang} />

@@ -14,7 +14,9 @@ function scoreCountry(c: Country, p: Profile, cost: (c: Country) => T2): Result 
   const notes: Note[] = [];
   let s = 50;
   const has = (arr: string[], v: string) => arr.includes(v);
-  const eea = EEA_RES.has(p.residence);
+  // Minst én stifter i EØS (eller Storbritannia for Norge) holder for kravene til ledelsen
+  const eea = p.residence.some((r) => EEA_RES.has(r));
+  const livesIn = (code: string) => p.residence.includes(code);
 
   // Digital stiftelse og e-ID
   const eidFor: Record<string, string> = { NO: "bankid_no", SE: "bankid_se", DK: "mitid", EE: "eresidency" };
@@ -40,11 +42,11 @@ function scoreCountry(c: Country, p: Profile, cost: (c: Country) => T2): Result 
   }
 
   // Krav til bosted for ledelsen
-  if ((c.code === "NO" || c.code === "SE") && p.residence && !eea && !(c.code === "NO" && p.residence === "GB")) {
+  if ((c.code === "NO" || c.code === "SE") && p.residence.length && !eea && !(c.code === "NO" && livesIn("GB"))) {
     s -= 18;
     notes.push({ kind: "minus", text: { nb: "Ledelsen må i hovedsak bo i EØS. Du trenger en lokal daglig leder eller styremedlemmer.", en: "Management must mainly live in the EEA. You need a local CEO or board members." } });
   }
-  if (c.code === "CH" && p.residence !== "CH") {
+  if (c.code === "CH" && !livesIn("CH")) {
     s -= 20;
     notes.push({ kind: "minus", text: { nb: "Krever en person med signaturrett som bor i Sveits. Det koster ofte 6 000–25 000 CHF i året via partner.", en: "Requires an authorised signatory living in Switzerland, often CHF 6,000–25,000 a year via a partner." } });
   }
@@ -94,14 +96,14 @@ function scoreCountry(c: Country, p: Profile, cost: (c: Country) => T2): Result 
   if (has(p.customers, "gulf") && c.code === "AE") s += 10;
   if (has(p.customers, "asia") && c.code === "PH") s += 6;
   if ((has(p.customers, "eu") || has(p.customers, "nordic")) && ["NO", "SE", "DK", "EE", "PL"].includes(c.code)) s += 3;
-  if (has(p.customers, "local") && c.code === p.residence) s += 10;
+  if (has(p.customers, "local") && livesIn(c.code)) s += 10;
   if (c.code === "AE") notes.push({ kind: "info", text: { nb: "Frisoneselskaper kan ikke selge direkte til kunder på mainland i UAE.", en: "Free zone companies cannot sell directly to mainland UAE customers." } });
 
   // Hjemland gir enklest skatt og drift
-  if (c.code === p.residence) {
+  if (livesIn(c.code)) {
     s += 10;
     notes.push({ kind: "plus", text: { nb: "Selskapet ligger der du bor. Det gir enklest skatt, bank og drift.", en: "The company is where you live. That makes tax, banking and operations simplest." } });
-  } else if (p.residence === "NO") {
+  } else if (livesIn("NO")) {
     notes.push({ kind: "info", text: { nb: "Du bor i Norge. Utbytte til deg skattlegges i Norge, og NOKUS-reglene kan gjelde for selskaper i lavskatteland.", en: "You live in Norway. Dividends to you are taxed in Norway, and CFC (NOKUS) rules may apply to low-tax countries." } });
   }
 
@@ -111,7 +113,7 @@ function scoreCountry(c: Country, p: Profile, cost: (c: Country) => T2): Result 
   if (has(p.needs, "ansatte")) notes.push({ kind: "info", text: { nb: `Arbeidsgiveravgift: ${c.employerTax.nb}.`, en: `Employer contributions: ${c.employerTax.en}.` } });
 
   // Bransjer med særregler
-  if (p.business === "invest") notes.push({ kind: "info", text: { nb: "Investering for andre kan kreve konsesjon i alle landene.", en: "Investing for others may require a licence in every country." } });
+  if (p.business.includes("invest")) notes.push({ kind: "info", text: { nb: "Investering for andre kan kreve konsesjon i alle landene.", en: "Investing for others may require a licence in every country." } });
 
   const blocked = notes.some((n) => n.kind === "block");
   return { country: c, score: Math.max(0, Math.min(100, s)), notes, blocked };

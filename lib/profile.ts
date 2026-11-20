@@ -98,32 +98,33 @@ export function capitalLabel(id: string, lang: "nb" | "en", cur: string, nokPerU
 }
 
 export type Profile = {
-  business: string;
+  business: string[];
   description: string;
-  residence: string;
+  residence: string[];
   eids: string[];
-  owners: string;
+  owners: string[];
   customers: string[];
   prios: string[];
   needs: string[];
   capital: string;
 };
 
-export const EMPTY_PROFILE: Profile = { business: "", description: "", residence: "", eids: [], owners: "", customers: [], prios: [], needs: [], capital: "" };
+export const EMPTY_PROFILE: Profile = { business: [], description: "", residence: [], eids: [], owners: [], customers: [], prios: [], needs: [], capital: "" };
 
 const ids = (opts: Opt[]) => new Set(opts.map((o) => o.id));
 const pick = (v: unknown, opts: Opt[]) => (typeof v === "string" && ids(opts).has(v) ? v : "");
-const pickMany = (v: unknown, opts: Opt[]) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && ids(opts).has(x)) : []);
+// Flervalg. Eldre saker lagret med ett valg (tekst) gjøres om til en liste.
+const pickMany = (v: unknown, opts: Opt[]) => (Array.isArray(v) ? v : typeof v === "string" && v ? [v] : []).filter((x): x is string => typeof x === "string" && ids(opts).has(x));
 
 // Rydder svar fra nettleseren: bare kjente verdier slipper gjennom
 export function cleanProfile(raw: unknown): Profile {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
-    business: pick(r.business, BUSINESS),
+    business: pickMany(r.business, BUSINESS),
     description: typeof r.description === "string" ? r.description.slice(0, 1000) : "",
-    residence: pick(r.residence, RESIDENCE),
+    residence: pickMany(r.residence, RESIDENCE),
     eids: pickMany(r.eids, EID),
-    owners: pick(r.owners, OWNERS),
+    owners: pickMany(r.owners, OWNERS),
     customers: pickMany(r.customers, CUSTOMERS),
     prios: pickMany(r.prios, PRIOS),
     needs: pickMany(r.needs, NEEDS),
@@ -132,3 +133,5 @@ export function cleanProfile(raw: unknown): Profile {
 }
 
 export const label = (opts: Opt[], id: string) => opts.find((o) => o.id === id)?.label;
+// Flere valg som én tekst, f.eks. «Holdingselskap, Eiendom»
+export const labels = (opts: Opt[], list: string[], lang: "nb" | "en") => list.map((id) => label(opts, id)?.[lang]).filter(Boolean).join(", ");
