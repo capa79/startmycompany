@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: startmycompany
+    runtime: node
+    region: frankfurt
+    plan: free # bytt til "starter" for at siden aldri skal sove
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false # Neon: «pooled connection string» (sslmode=require)
+      - key: ADMIN_EMAIL
+        sync: false # hovedadministrator, f.eks. vidar@capacapital.no
+      - key: ADMIN_PASSWORD
+        sync: false # minst 10 tegn
+      - key: APP_URL
+        sync: false # f.eks. https://startmycompany.onrender.com (uten / til slutt)
+      # Valgfritt: «Fortsett med Google». Omdirigerings-URI: {APP_URL}/api/auth/google/callback
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # Valgfritt: AI-rådgiveren (Claude)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Personvern
+      - key: LEGAL_ENTITY
+        sync: false
+      - key: LEGAL_ORGNR
+        sync: false
+      - key: PRIVACY_CONTACT
+        sync: false
